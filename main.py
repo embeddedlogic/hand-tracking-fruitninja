@@ -93,6 +93,7 @@ class MainMenu:
         self.play_button.draw(screen)
         self.play_guide_button.draw(screen)
         self.quit_button.draw(screen)
+        
 class PlayGuideScreen:
     #stores the background for the play guide screen
     def __init__(self,width,height):
@@ -112,6 +113,8 @@ class PlayGuideScreen:
                      "7: Only one player should be in frame",
                      "8: Try to get the highest score possible",
                     ]
+        #creating the back button for the play guide
+        self.back_button = Button(150,50,"Back")
         #showing the image for the play guide
         # when user clicks play guide  will have another background
     def show_play_guide(self, screen):
@@ -131,7 +134,10 @@ class PlayGuideScreen:
             #80 pixels from the left and y pixels down from the top
             screen.blit(text, (80, y))
             #so the rules dont overlap on each other
-            y += 50          
+            y += 50   
+            #displays the  back button
+        self.back_button.draw(screen)  
+
 class Game:
     def __init__(self):
         pygame.init()
@@ -182,6 +188,8 @@ class Game:
                 self.state = "playing"
             elif self.menu.play_guide_button.is_pressed():
                 self.state = "play_guide"
+            if self.play_guide.back_button.is_pressed():
+                self.state = "menu"
             elif self.state == "play_guide":
                 self.play_guide.show_play_guide(self.screen)
             elif self.menu.quit_button.is_pressed():
