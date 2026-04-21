@@ -20,8 +20,10 @@ class HandTracker:
         ret, self.frame = self.cap.read()
 
         if ret is False:
-            print("Cannot receive frame")
             return False
+            #flip the frame it can be like iphone video in way
+            # if user swipes right it will be right and not inverse
+        self.frame = cv2.flip(self.frame,1)
 
         # Changes the color of the frame from BGR to RGB
         # because OpenCV uses BGR and MediaPipe uses RGB
@@ -92,8 +94,7 @@ class MainMenu:
 
         self.play_button.draw(screen)
         self.play_guide_button.draw(screen)
-        self.quit_button.draw(screen)
-        
+        self.quit_button.draw(screen)       
 class PlayGuideScreen:
     #stores the background for the play guide screen
     def __init__(self,width,height):
@@ -137,7 +138,6 @@ class PlayGuideScreen:
             y += 50   
             #displays the  back button
         self.back_button.draw(screen)  
-
 class Game:
     def __init__(self):
         pygame.init()
@@ -170,7 +170,29 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+    def run_webcam_game(self):
+        # if camera reads correct get the webcam image from the tracker 
+        #fix the imgae for pygame
+        #convert the webcam image into a pygame surface
+        #resize the surface 
+        #draw the surface to match the window size 
 
+        if self.tracker.read_frame():
+            frame = self.tracker.rgb_frame
+            surface = pygame.image.frombuffer(
+            frame.tobytes(),
+            frame.shape[1::-1],
+            "RGB"
+        )
+
+            surface = pygame.transform.scale(surface, (self.width, self.height))
+
+            self.screen.blit(surface, (0, 0))
+       
+
+        else:
+            self.quit_game()
+            
     def run(self):
         #self.state helps show which screen u want your game to show
         # menu will show the menu
@@ -178,22 +200,23 @@ class Game:
         #playing will run the game
         while self.running:
             self.handle_events()
-
+            #all the buttons 
             if self.state == "menu":
                 self.menu.draw(self.screen, self.width, self.height)
             elif self.state == "play_guide":
                self.play_guide.show_play_guide(self.screen)
-            #see if the buttons work
             if self.menu.play_button.is_pressed():
                 self.state = "playing"
+            elif self.state == "playing":
+                self.run_webcam_game()
+            elif self.state == "playing":
+                self.run_webcam_game()
             elif self.menu.play_guide_button.is_pressed():
                 self.state = "play_guide"
-            if self.play_guide.back_button.is_pressed():
+            elif self.play_guide.back_button.is_pressed():
                 self.state = "menu"
-            elif self.state == "play_guide":
-                self.play_guide.show_play_guide(self.screen)
             elif self.menu.quit_button.is_pressed():
-                self.exit() 
+                self.quit_game()
             elif self.state == "playing":
                 if not self.tracker.read_frame():
                     self.running = False
