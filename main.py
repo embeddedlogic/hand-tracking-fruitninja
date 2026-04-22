@@ -1,7 +1,8 @@
 from cvzone.HandTrackingModule import HandDetector
-import mouse 
+import numpy as np
 import cv2
 import time
+import random
 import math
 import pygame, sys
 import mediapipe as mp
@@ -28,9 +29,15 @@ class HandTracker:
         #if hand is present in the frame store all 20 landmarks in lmlist
         if self.hands:
             lmlist = self.hands[0]['lmList']
-            x,y = lmlist[8][0], lmlist[8][1]  
+            x8,y8 = lmlist[8][0], lmlist[8][1] 
+            x7,y7 = lmlist[7][0], lmlist[7][1]
             #makes a circle to show the top of index finger
-            cv2.circle(self.frame,(x,y),5,(0,255,255),2)
+            #all the paremters
+            #radius = 20 
+            #color = 255,0,0
+            #thickness is 2
+            cv2.circle(self.frame,(x8,y8),20,(255,0,0),2)
+            cv2.circle(self.frame,(x7,y7),20,(255,0,0),2)
 
 
         if ret is False:
@@ -156,13 +163,26 @@ class PlayGuideScreen:
         self.back_button.draw(screen)  
 class Game:
     def __init__(self):
+        #all the fruits for the game and bombs 
+        self.fruit_images = {
+            "apple": pygame.image.load("assets/images/apple.png"),
+            'avocado':pygame.image.load("assets/images/avocado.png"),
+            "banana":pygame.image.load("assets/images/banana.png"),
+            "cherries":pygame.image.load("assets/images/cherries.png"),
+            "lemon":pygame.image.load("assets/images/lemon.png"),
+            "orange":pygame.image.load("assets/images/orange.png"),
+            "pear": pygame.image.load("assets/images/pear.png"),
+            "pineapple":pygame.image.load("assets/images/pineapple.png"),
+            "tomato":pygame.image.load("assets/images/tomato.png"),
+            "bomb":pygame.image.load("assets/images/bomb.png"),
+        }
         pygame.init()
         self.width = 1280
         self.height = 720
         self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Fruit Ninja")
         self.clock = pygame.time.Clock()
-        self.running = True
+        self.running = True 
         self.menu = MainMenu(self.width,self.height)
         self.play_guide = PlayGuideScreen(self.width, self.height)
         self.tracker = HandTracker()
@@ -253,8 +273,25 @@ class Game:
         pygame.quit()
         sys.exit()
 class Fruit:
-    def __init__(self):
-        pass
+    def __init__(self,image):
+        #storing the image
+        # x will pick a random horizontal postion where the fruit appears
+        #y is the starting vertical position so lowest is bottom of screen large number 
+        #speed_x and speed_ y control how fast the fruit show move in the x and y direction. Controls the diagonal movement of fruits 
+        self.image = image
+        self.x = random.randint(70,580)
+        self.y = 600
+        speed_x = random.randint(-4,4)
+        speed_y = random.randit(-18,-14)
+        self.gravity = random.uniform(0.9,1.5)
+    def move(self):
+        self.speed_y += 1
+        self.x += self.speed_x
+        self.y += self.speed_y
+        
+    def draw(self,screen):
+        screen.blit(self.image,(self.x,self.y))
+        
 
 
 game = Game()
