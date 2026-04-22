@@ -1,3 +1,4 @@
+from cvzone.HandTrackingModule import HandDetector
 import cv2
 import time
 import math
@@ -11,6 +12,10 @@ class HandTracker:
         self.cap = cv2.VideoCapture(0)
         self.frame = None
         self.rgb_frame = None
+        #fix camera quality
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        self.detector = HandDetector(detectionCon=0.65, maxHands=1)
 
         if not self.cap.isOpened():
             print("Cannot open camera")
@@ -18,6 +23,12 @@ class HandTracker:
 
     def read_frame(self):
         ret, self.frame = self.cap.read()
+        self.hands, self.frame = self.detector.findHands(self.frame,flipType=True)
+        #if hand is present in the frame store all 20 landmarks in lmlist
+        if self.hands:
+            lmlist = self.hands[0]['lmList']
+            x,y = lmlist[8][0], lmlist[8][1]  
+
 
         if ret is False:
             return False
@@ -29,6 +40,8 @@ class HandTracker:
         # because OpenCV uses BGR and MediaPipe uses RGB
         self.rgb_frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         return True
+    def fingertip_postion(self):
+        pass
 
     def show_frame(self):
         cv2.imshow("Frame", self.frame)
@@ -236,7 +249,9 @@ class Game:
         self.tracker.release_camera()
         pygame.quit()
         sys.exit()
-        
+class Fruit:
+    def __init__(self):
+        pass
 
 
 game = Game()
