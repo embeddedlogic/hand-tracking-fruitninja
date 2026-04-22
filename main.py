@@ -1,4 +1,5 @@
 from cvzone.HandTrackingModule import HandDetector
+import mouse 
 import cv2
 import time
 import math
@@ -28,6 +29,8 @@ class HandTracker:
         if self.hands:
             lmlist = self.hands[0]['lmList']
             x,y = lmlist[8][0], lmlist[8][1]  
+            #makes a circle to show the top of index finger
+            cv2.circle(self.frame,(x,y),5,(0,255,255),2)
 
 
         if ret is False:
