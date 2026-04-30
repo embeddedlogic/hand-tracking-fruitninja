@@ -1,13 +1,8 @@
 from cvzone.HandTrackingModule import HandDetector
-import numpy as np
 import cv2
-import time
 import random
-import math
-import pygame, sys
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
+import pygame
+import sys
 
 class HandTracker:
     def __init__(self):
@@ -31,6 +26,7 @@ class HandTracker:
             lmlist = self.hands[0]['lmList']
             x8,y8 = lmlist[8][0], lmlist[8][1] 
             x7,y7 = lmlist[7][0], lmlist[7][1]
+            
             #makes a circle to show the top of index finger
             #all the paremters
             #radius = 20 
@@ -128,14 +124,13 @@ class PlayGuideScreen:
         )
         self.play_guide_background = pygame.transform.scale(self.play_guide_background,(width, height))
         self.rules =[
-                     "1: Stand in front of the camera and make sure hand is visible",
-                     "2: Move your hand to slice fruit to score points",
-                     "3: Each fruit you slice earns you a score",
+                     "1: Stand in front of the camera and make sure index finger is visible",
+                     "2: Move your index finger to slice the fruit",
+                     "3: Each fruit you slice gets you a point",
                      "4: Avoid bombs or the game ends",
-                     "5: Slice multiple fruits for combo points",
-                     "6: Keep your hand inside the camera view",
-                     "7: Only one player should be in frame",
-                     "8: Try to get the highest score possible",
+                     "5: Keep your hand inside the camera view",
+                     "6: Only one player hands should be in frame",
+                     "7: Try to get the highest score possible",
                     ]
         #creating the back button for the play guide
         self.back_button = Button(150,50,"Back")
@@ -163,105 +158,245 @@ class PlayGuideScreen:
         self.back_button.draw(screen)  
 class Game:
     def __init__(self):
-        #all the fruits for the game and bombs 
-        self.fruit_images = {
-            "apple": pygame.image.load("assets/images/apple.png"),
-            'avocado':pygame.image.load("assets/images/avocado.png"),
-            "banana":pygame.image.load("assets/images/banana.png"),
-            "cherries":pygame.image.load("assets/images/cherries.png"),
-            "lemon":pygame.image.load("assets/images/lemon.png"),
-            "orange":pygame.image.load("assets/images/orange.png"),
-            "pear": pygame.image.load("assets/images/pear.png"),
-            "pineapple":pygame.image.load("assets/images/pineapple.png"),
-            "tomato":pygame.image.load("assets/images/tomato.png"),
-            "bomb":pygame.image.load("assets/images/bomb.png"),
-        }
         pygame.init()
         self.width = 1280
         self.height = 720
         self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Fruit Ninja")
         self.clock = pygame.time.Clock()
-        self.running = True 
-        self.menu = MainMenu(self.width,self.height)
+        self.running = True
+
+        self.game_start_time = None
+        self.game_duration = 25
+        self.score = 0
+
+        self.last_spawn_time = pygame.time.get_ticks()
+        self.spawn_interval = 400
+
+        self.fruit_images = {
+            "apple": pygame.image.load("assets/images/apple.png"),
+            "avocado": pygame.image.load("assets/images/avocado.png"),
+            "banana": pygame.image.load("assets/images/banana.png"),
+            "cherries": pygame.image.load("assets/images/cherries.png"),
+            "lemon": pygame.image.load("assets/images/lemon.png"),
+            "orange": pygame.image.load("assets/images/orange.png"),
+            "pear": pygame.image.load("assets/images/pear.png"),
+            "pineapple": pygame.image.load("assets/images/pineapple.png"),
+            "tomato": pygame.image.load("assets/images/tomato.png"),
+            "bomb": pygame.image.load("assets/images/bomb.png"),
+        }
+
+        for key in self.fruit_images:
+            self.fruit_images[key] = pygame.transform.scale(
+                self.fruit_images[key], (300, 150)
+            )
+
+        self.fruits = []
+
+        self.menu = MainMenu(self.width, self.height)
         self.play_guide = PlayGuideScreen(self.width, self.height)
         self.tracker = HandTracker()
         self.state = "menu"
-        #Rules for the Play Guide
-
-    def draw_play_guide(self):
-        self.screen.fill((0, 0, 0))
-        font = pygame.font.SysFont(None, 40)
-        y = 100
-
-        for rule in self.rules:
-            text = font.render(rule, True, (255,255,255))
-            self.screen.blit(text, (50, y))
-            y += 50
-
-        self.menu = MainMenu(self.width,self.height)
-        self.tracker = HandTracker()
 
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+
+    def get_remaining_time(self):
+        if self.game_start_time is None:
+            return self.game_duration
+
+        elapsed_time = (pygame.time.get_ticks() - self.game_start_time) / 1000
+        remaining_time = self.game_duration - elapsed_time
+
+        if remaining_time <= 0:
+            return 0
+
+        return remaining_time
+
     def run_webcam_game(self):
-        # if camera reads correct get the webcam image from the tracker 
-        #fix the imgae for pygame
-        #convert the webcam image into a pygame surface
-        #resize the surface 
-        #draw the surface to match the window size 
+       
+        remaining_time = self.get_remaining_time()
+
+        if remaining_time <= 0:
+            self.state = "game_over"
+            return
 
         if self.tracker.read_frame():
             frame = self.tracker.rgb_frame
             surface = pygame.image.frombuffer(
-            frame.tobytes(),
-            frame.shape[1::-1],
-            "RGB"
-        )
+                frame.tobytes(),
+                frame.shape[1::-1],
+                "RGB"
+            )
 
             surface = pygame.transform.scale(surface, (self.width, self.height))
-
             self.screen.blit(surface, (0, 0))
-       
+
+            font = pygame.font.SysFont(None, 55)
+
+            # Score box
+            pygame.draw.rect(self.screen, (0, 0, 0), (30, 30, 250, 60))
+            score_text = font.render(
+                f"Score: {self.score}",
+                True,
+                (255, 255, 255)
+            )
+            self.screen.blit(score_text, (45, 45))
+
+            # Time
+            time_text = font.render(
+                f"Time: {int(remaining_time)}",
+                True,
+                (255, 255, 255)
+            )
+            self.screen.blit(time_text, (1065, 45))
+
+            current_time = pygame.time.get_ticks()
+
+            if current_time - self.last_spawn_time > self.spawn_interval:
+                self.spawn_fruits()
+                self.last_spawn_time = current_time
+
+            for fruit in self.fruits:
+                fruit.move()
+                fruit.draw(self.screen)
+
+            if self.tracker.hands:
+                lmlist = self.tracker.hands[0]['lmList']
+
+                x8 = self.width - lmlist[8][0]
+                y8 = lmlist[8][1]
+
+                x7 = self.width - lmlist[7][0]
+                y7 = lmlist[7][1]
+
+                pygame.draw.line(
+                    self.screen,
+                    (255, 0, 0),
+                    (x7, y7),
+                    (x8, y8),
+                    18
+                )
+
+                pygame.draw.line(
+                    self.screen,
+                    (255, 0, 0),
+                    (x7, y7),
+                    (x8, y8),
+                    6
+                )
+
+                for fruit in self.fruits[:]:
+                    fruit_width = fruit.image.get_width()
+                    fruit_height = fruit.image.get_height()
+
+                    hit_8 = (
+                        x8 >= fruit.x and x8 <= fruit.x + fruit_width and
+                        y8 >= fruit.y and y8 <= fruit.y + fruit_height
+                    )
+
+                    hit_7 = (
+                        x7 >= fruit.x and x7 <= fruit.x + fruit_width and
+                        y7 >= fruit.y and y7 <= fruit.y + fruit_height
+                    )
+
+                    if hit_8 or hit_7:
+                        self.fruits.remove(fruit)
+                        if fruit.type == "bomb":
+                            self.state = "game_over"
+                            return
+                        else:
+                            self.score += 1
 
         else:
             self.quit_game()
-            
+
+    def draw_game_over_screen(self):
+        self.screen.fill((0, 0, 0))
+
+        font_big = pygame.font.SysFont(None, 90)
+        font_small = pygame.font.SysFont(None, 55)
+
+        game_over_text = font_big.render("Game OVER", True, (255, 0, 0))
+        score_text = font_small.render(f"Final Score: {self.score}", True, (255, 0, 0,))
+        restart_text = font_small.render("Press R to Return to Main Screen",True,(255,0,0))
+
+        self.screen.blit(game_over_text, (self.width // 2 - 220, self.height // 2 - 120))
+        self.screen.blit(score_text, (self.width // 2 - 150, self.height // 2))
+        self.screen.blit(restart_text, (self.width // 2 - 180, self.height // 2 + 140))
+        
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_r]:
+             self.state = "menu"
+
+    def spawn_fruits(self):
+        #more bombs depedning on the users score
+        if self.score >= 20:
+            bomb_chance = 0.9
+        elif self.score >= 10:
+            bomb_chance = 0.85
+        elif self.score >= 7:
+            bomb_chance = 0.5
+        elif self.score >= 4:
+            bomb_chance = 0.3
+        elif self.score >= 30:
+            bomb_chance = 0.9
+        else:
+            bomb_chance = 0.2
+        if random.random() < bomb_chance:
+            fruit_type = "bomb"
+        else:
+            fruit_type = random.choice([
+                "apple",
+                "avocado",
+                "bannana",
+                "cherries",
+                "lemon",
+                "orange",
+                "pear",
+                "pinapple",
+                "tomato"
+            ])
+
+       
+        fruit_type = random.choice(list(self.fruit_images.keys()))
+        fruit_image = self.fruit_images[fruit_type]
+        fruit = Fruit(fruit_image, fruit_type)
+        self.fruits.append(fruit)
+
+
     def run(self):
-        #self.state helps show which screen u want your game to show
-        # menu will show the menu
-        #play_guide will have the rules 
-        #playing will run the game
         while self.running:
             self.handle_events()
-            #all the buttons 
+
             if self.state == "menu":
                 self.menu.draw(self.screen, self.width, self.height)
+
+                if self.menu.play_button.is_pressed():
+                    self.state = "playing"
+                    self.game_start_time = pygame.time.get_ticks()
+                    self.score = 0
+                    self.fruits = []
+
+                elif self.menu.play_guide_button.is_pressed():
+                    self.state = "play_guide"
+
+                elif self.menu.quit_button.is_pressed():
+                    self.quit_game()
+
             elif self.state == "play_guide":
-               self.play_guide.show_play_guide(self.screen)
-            if self.menu.play_button.is_pressed():
-                self.state = "playing"
+                self.play_guide.show_play_guide(self.screen)
+
+                if self.play_guide.back_button.is_pressed():
+                    self.state = "menu"
+
             elif self.state == "playing":
                 self.run_webcam_game()
-            elif self.state == "playing":
-                self.run_webcam_game()
-            elif self.menu.play_guide_button.is_pressed():
-                self.state = "play_guide"
-            elif self.play_guide.back_button.is_pressed():
-                self.state = "menu"
-            elif self.menu.quit_button.is_pressed():
-                self.quit_game()
-            elif self.state == "playing":
-                if not self.tracker.read_frame():
-                    self.running = False
 
-                # temporary test only
-                self.tracker.show_frame()
-
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    self.running = False
+            elif self.state == "game_over":
+                self.draw_game_over_screen()
 
             pygame.display.flip()
             self.clock.tick(60)
@@ -273,26 +408,25 @@ class Game:
         pygame.quit()
         sys.exit()
 class Fruit:
-    def __init__(self,image):
+    def __init__(self,image,fruit_type):
         #storing the image
         # x will pick a random horizontal postion where the fruit appears
         #y is the starting vertical position so lowest is bottom of screen large number 
-        #speed_x and speed_ y control how fast the fruit show move in the x and y direction. Controls the diagonal movement of fruits 
+        #speed_x and speed_ y control how fast the fruit show move in the x and y direction. Controls the diagonal movement of fruits
         self.image = image
-        self.x = random.randint(70,580)
-        self.y = 600
-        speed_x = random.randint(-4,4)
-        speed_y = random.randit(-18,-14)
-        self.gravity = random.uniform(0.9,1.5)
+        self.type = fruit_type
+        self.x = random.randint(150,980)       # avoids spawning too close 
+        self.y = 770  # start near button of screen
+        self.speed_x = random.randint(-2,2)      #control sideways movement 
+        self.speed_y = random.randint(-25,-15)  #control how fast fruit goes upward
+        self.gravity = 0.3 #pulling the fruit down
     def move(self):
-        self.speed_y += 1
-        self.x += self.speed_x
-        self.y += self.speed_y
-        
+        self.speed_y += self.gravity
+        self.x += self.speed_x 
+        self.y += self.speed_y  
     def draw(self,screen):
         screen.blit(self.image,(self.x,self.y))
         
-
 
 game = Game()
 game.run()
