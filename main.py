@@ -131,6 +131,7 @@ class PlayGuideScreen:
                      "5: Keep your hand inside the camera view",
                      "6: Only one player hands should be in frame",
                      "7: Try to get the highest score possible",
+                     "8:            Have Fun",
                     ]
         #creating the back button for the play guide
         self.back_button = Button(150,50,"Back")
@@ -163,15 +164,17 @@ class Game:
         self.height = 720
         self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Fruit Ninja")
+       
         self.clock = pygame.time.Clock()
         self.running = True
+        
 
         self.game_start_time = None
         self.game_duration = 25
         self.score = 0
 
         self.last_spawn_time = pygame.time.get_ticks()
-        self.spawn_interval = 400
+        self.spawn_interval = 600
 
         self.fruit_images = {
             "apple": pygame.image.load("assets/images/apple.png"),
@@ -319,7 +322,7 @@ class Game:
         font_big = pygame.font.SysFont(None, 90)
         font_small = pygame.font.SysFont(None, 55)
 
-        game_over_text = font_big.render("Game OVER", True, (255, 0, 0))
+        game_over_text = font_big.render("GAME OVER", True, (255, 0, 0))
         score_text = font_small.render(f"Final Score: {self.score}", True, (255, 0, 0,))
         restart_text = font_small.render("Press R to Return to Main Screen",True,(255,0,0))
 
@@ -368,12 +371,25 @@ class Game:
 
 
     def run(self):
+        #Load BG Music
+        pygame.mixer.music.load("sounds/sunny_days.ogg")
+        pygame.mixer.music.set_volume(1.0)
         while self.running:
             self.handle_events()
+            
+           
+            if self.state == "menu" or self.state == "play_guide":
+                if not pygame.mixer.music.get_busy():
+                 pygame.mixer.music.play(-1,0.0) #Reapeats, and where to start playing
+            elif self.state == "playing" or self.state == "game_over":
+                pygame.mixer.music.stop()
+            else:
+                pygame.mixer.music.stop()
+            
 
             if self.state == "menu":
                 self.menu.draw(self.screen, self.width, self.height)
-
+            
                 if self.menu.play_button.is_pressed():
                     self.state = "playing"
                     self.game_start_time = pygame.time.get_ticks()
